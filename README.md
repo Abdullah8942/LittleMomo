@@ -131,8 +131,147 @@ cd functions
 npm install
 firebase deploy
 
-Contributing
 
+
+**Working**
+
+****ERD Diagram the projects functional requirements****
+
+**Link**: https://dbdiagram.io/d/67a60d60263d6cf9a065319e
+
+**CRUD**
+
+// 🛒 Get All Products
+router.get('/products', async (req, res) => {
+  const products = await Product.find();
+  res.json(products);
+});
+
+// 🛒 Get Product by ID
+router.get('/products/:id', async (req, res) => {
+  const product = await Product.findById(req.params.id);
+  res.json(product);
+});
+
+// 🛒 Create New Product (Admin Only)
+router.post('/products', async (req, res) => {
+  const product = new Product(req.body);
+  await product.save();
+  res.status(201).json(product);
+});
+
+// 🛒 Update Product (Admin Only)
+router.put('/products/:id', async (req, res) => {
+  const product = await Product.findByIdAndUpdate(req.params.id, req.body, { new: true });
+  res.json(product);
+});
+
+// 🛒 Delete Product (Admin Only)
+router.delete('/products/:id', async (req, res) => {
+  await Product.findByIdAndDelete(req.params.id);
+  res.json({ message: 'Product deleted' });
+});
+
+// 📦 Create New Order
+router.post('/orders', async (req, res) => {
+  const order = new Order(req.body);
+  await order.save();
+  res.status(201).json(order);
+});
+
+// 📦 Get All Orders (Admin & Customer)
+router.get('/orders', async (req, res) => {
+  const orders = await Order.find().populate('user_id').populate('products.product_id');
+  res.json(orders);
+});
+
+// 📦 Get Order by ID
+router.get('/orders/:id', async (req, res) => {
+  const order = await Order.findById(req.params.id).populate('user_id').populate('products.product_id');
+  res.json(order);
+});
+
+// 📦 Update Order Status (Admin/Delivery)
+router.put('/orders/:id/status', async (req, res) => {
+  const order = await Order.findByIdAndUpdate(req.params.id, { status: req.body.status }, { new: true });
+  res.json(order);
+});
+
+// 📦 Delete Order
+router.delete('/orders/:id', async (req, res) => {
+  await Order.findByIdAndDelete(req.params.id);
+  res.json({ message: 'Order deleted' });
+});
+
+// 🚚 Assign Delivery to Order
+router.post('/deliveries', async (req, res) => {
+  const delivery = new Delivery(req.body);
+  await delivery.save();
+  res.status(201).json(delivery);
+});
+
+// 🚚 Get All Deliveries
+router.get('/deliveries', async (req, res) => {
+  const deliveries = await Delivery.find().populate('order_id').populate('delivery_person_id');
+  res.json(deliveries);
+});
+
+// 🚚 Update Delivery Status
+router.put('/deliveries/:id/status', async (req, res) => {
+  const delivery = await Delivery.findByIdAndUpdate(req.params.id, { status: req.body.status }, { new: true });
+  res.json(delivery);
+});
+
+// 🚚 Get Routes for Delivery
+router.get('/routes', async (req, res) => {
+  const routes = await Route.find();
+  res.json(routes);
+});
+
+// 🚚 Create New Route (Admin Only)
+router.post('/routes', async (req, res) => {
+  const route = new Route(req.body);
+  await route.save();
+  res.status(201).json(route);
+});
+
+// 👤 Register New User
+router.post('/users', async (req, res) => {
+  const user = new User(req.body);
+  await user.save();
+  res.status(201).json(user);
+});
+
+// 👤 Get All Users (Admin Only)
+router.get('/users', async (req, res) => {
+  const users = await User.find();
+  res.json(users);
+});
+
+// 👤 Get User by ID
+router.get('/users/:id', async (req, res) => {
+  const user = await User.findById(req.params.id);
+  res.json(user);
+});
+
+// 👤 Update User Profile
+router.put('/users/:id', async (req, res) => {
+  const user = await User.findByIdAndUpdate(req.params.id, req.body, { new: true });
+  res.json(user);
+});
+
+// 👤 Delete User (Admin Only)
+router.delete('/users/:id', async (req, res) => {
+  await User.findByIdAndDelete(req.params.id);
+  res.json({ message: 'User deleted' });
+});
+
+module.exports = router;
+
+
+
+ 
+**Contributing**
 We welcome contributions to improve Little-Momo! Feel free to submit pull requests or report issues.
 
 License
