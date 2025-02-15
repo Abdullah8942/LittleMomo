@@ -137,7 +137,14 @@ firebase deploy
 
 ****ERD Diagram the projects functional requirements****
 
-**Link**: https://dbdiagram.io/d/67a60d60263d6cf9a065319e
+**Link**:https://dbdiagram.io/d/67a60d60263d6cf9a065319e
+
+**Authentication using Firebase**
+https://console.firebase.google.com/u/0/project/little-momo-9fbc2/authentication/users
+
+
+**postman**
+**link** https://app.getpostman.com/join-team?invite_code=a216fadb49273712d1d7785b5a7c1e576aab65745ef95f5024e4cf2f2e1ad4db&target_code=391ff250ca62ab40964d4b80b8c20e2b
 
 **CRUD**
 
@@ -266,7 +273,7 @@ router.delete('/users/:id', async (req, res) => {
   res.json({ message: 'User deleted' });
 });
 
-module.exports = router;
+
 
 
 
