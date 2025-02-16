@@ -1,108 +1,229 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 class LoginScreen extends StatefulWidget {
+  const LoginScreen({super.key});
+
   @override
-  LoginScreenState createState() => LoginScreenState(); // Make the state class public
+  _LoginScreenState createState() => _LoginScreenState();
 }
 
-class LoginScreenState extends State<LoginScreen> {
-  // Renamed to public
+class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
   final FirebaseAuth _auth = FirebaseAuth.instance;
+  bool isLoading = false;
+  bool _obscurePassword = true; // For password visibility toggle
 
-  Future<void> login() async {
+  Future<void> _login() async {
+    if (!_validateForm()) return;
+
+    setState(() => isLoading = true);
     try {
-      print("Login attempt started...");
-      print("Email entered: ${emailController.text}");
-      print("Password entered: ${passwordController.text}");
-
-      // Sign in with email and password
-      UserCredential userCredential = await _auth.signInWithEmailAndPassword(
+      await _auth.signInWithEmailAndPassword(
         email: emailController.text.trim(),
         password: passwordController.text.trim(),
       );
-      print("Firebase sign-in successful!");
-
-      User? user = userCredential.user;
-      if (user != null) {
-        print("User UID: ${user.uid}");
-        print("User email from Auth: ${user.email}");
-
-        // Normalize email to lowercase for Firestore document ID
-        String normalizedEmail = user.email!.toLowerCase();
-        print("Normalized email for Firestore query: $normalizedEmail");
-
-        // Check Firestore for admin role
-        print("Checking Firestore for admin document...");
-        DocumentSnapshot adminDoc = await FirebaseFirestore.instance
-            .collection('admins')
-            .doc(normalizedEmail)
-            .get();
-
-        if (adminDoc.exists) {
-          print("Admin document found! Proceeding to dashboard...");
-          Navigator.pushReplacementNamed(context, '/dashboard');
-        } else {
-          print("Admin document NOT found. Signing out...");
-          try {
-            await _auth.signOut();
-            print("User signed out successfully");
-          } catch (signOutError) {
-            print("Sign-out error: $signOutError");
-          }
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text("Access Denied: Not an Admin")),
-          );
-        }
+      if (mounted) {
+        Navigator.pushReplacementNamed(context, '/dashboard');
       }
     } on FirebaseAuthException catch (e) {
-      print("Firebase Auth Error: Code=${e.code}, Message=${e.message}");
-      String message = "Login Failed";
-      if (e.code == 'user-not-found' || e.code == 'wrong-password') {
-        message = "Invalid credentials";
-      } else if (e.code == 'user-disabled') {
-        message = "Account disabled";
+      String errorMessage = "Login failed. Please try again.";
+      if (e.code == 'user-not-found') {
+        errorMessage = "No user found with this email.";
+      } else if (e.code == 'wrong-password') {
+        errorMessage = "Incorrect password. Please try again.";
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message)),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(errorMessage)),
+        );
+      }
     } catch (e) {
-      print("Unexpected Error: ${e.toString()}");
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Login Failed: ${e.toString()}")),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("An unexpected error occurred.")),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => isLoading = false);
+      }
     }
+  }
+
+  bool _validateForm() {
+    if (emailController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Please enter your email.")),
+      );
+      return false;
+    }
+    if (passwordController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Please enter your password.")),
+      );
+      return false;
+    }
+    return true;
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text("Admin Login")),
+      body: _buildGradientBackground(
+        child: Center(
+          child: SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 850),
+                child: Container(
+                  padding: const EdgeInsets.all(30),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF4F3011), // 🟤 Dark brown
+                    borderRadius: BorderRadius.circular(15),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.2),
+                        blurRadius: 15,
+                        spreadRadius: 3,
+                      ),
+                    ],
+                  ),
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      if (constraints.maxWidth < 600) {
+                        return _buildMobileLayout();
+                      } else {
+                        return _buildDesktopLayout();
+                      }
+                    },
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 
-      backgroundColor: Color(0xffffd66a), // Set background color here
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            TextField(
-              controller: emailController,
-              decoration: InputDecoration(labelText: "Email"),
+  Widget _buildGradientBackground({required Widget child}) {
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFFF29700), Color(0xFFD97800)], // 🔥 Orange gradient
+        ),
+      ),
+      child: child,
+    );
+  }
+
+  Widget _buildDesktopLayout() {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Expanded(
+          flex: 3,
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: _buildLoginForm(),
+          ),
+        ),
+        Expanded(
+          flex: 3,
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Image.asset(
+              "assets/logo/Logo.webp",
+              fit: BoxFit.contain,
+              height: 280,
             ),
-            TextField(
-              controller: passwordController,
-              decoration: InputDecoration(labelText: "Password"),
-              obscureText: true,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMobileLayout() {
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(20),
+          child: _buildLoginForm(),
+        ),
+        Padding(
+          padding: const EdgeInsets.all(20),
+          child: Image.asset(
+            "assets/logo/Logo.webp",
+            fit: BoxFit.contain,
+            height: 200,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildLoginForm() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const Text(
+          "Login",
+          style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white),
+        ),
+        const SizedBox(height: 12),
+        _buildTextField(emailController, "Your Email", Icons.email, TextInputType.emailAddress, AutofillHints.email),
+        _buildTextField(passwordController, "Password", Icons.lock, TextInputType.visiblePassword, AutofillHints.password, obscureText: true),
+        const SizedBox(height: 10),
+        Align(
+          alignment: Alignment.centerRight,
+          child: TextButton(
+            onPressed: () {},
+            child: const Text("Forgot Password?", style: TextStyle(color: Colors.white)),
+          ),
+        ),
+        const SizedBox(height: 12),
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton(
+            onPressed: isLoading ? null : _login,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.white, // White button
+              foregroundColor: const Color(0xFF4F3011), // Brown text
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
             ),
-            SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: login,
-              child: Text("Login"),
-            ),
-          ],
+            child: isLoading
+                ? const CircularProgressIndicator(color: Color(0xFF4F3011))
+                : const Text("Login", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTextField(TextEditingController controller, String hint, IconData icon, TextInputType keyboardType, String autofillHint, {bool obscureText = false}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: TextField(
+        controller: controller,
+        keyboardType: keyboardType,
+        obscureText: obscureText && _obscurePassword,
+        autofillHints: [autofillHint],
+        style: const TextStyle(color: Colors.white),
+        decoration: InputDecoration(
+          hintText: hint,
+          hintStyle: TextStyle(color: Colors.grey[300]),
+          filled: true,
+          fillColor: Colors.brown[700],
+          prefixIcon: Icon(icon, color: Colors.white),
         ),
       ),
     );
