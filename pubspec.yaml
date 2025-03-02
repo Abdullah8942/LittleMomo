@@ -27,4 +27,10 @@ flutter:
   uses-material-design: true
 
   assets:
-    - assets/logo/Logo.webp  # Ensure your image is inside the `assets/` folder
+    - assets/momo.jpg
+    - assets/veg.webp
+    - assets/buff.png
+    - assets/fried.jpg
+    - assets/spicy.webp
+    - assets/paneer.webp
+    - assets/ai.jpg  
