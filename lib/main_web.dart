@@ -1,22 +1,15 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
-import  'admin/login.dart';
+import 'admin/login.dart';
 import 'admin/admin_dashboard.dart';
+import 'firebase_options.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(
-    options: FirebaseOptions(
-      apiKey: "AIzaSyDNkshRcutVaC2QppI9Fhxrbnxnyw6Hcxc",
-      authDomain: "little-momo-9fbc2.firebaseapp.com",
-      projectId: "little-momo-9fbc2",
-      storageBucket: "little-momo-9fbc2.firebasestorage.app",
-      messagingSenderId: "774889290546",
-      appId: "1:774889290546:web:6eec31c312a23a223f352b",
-        measurementId: "G-HPK766EVR9"
-    ),
+    options: DefaultFirebaseOptions.currentPlatform,
   );
-
   runApp(const AdminPanelApp());
 }
 
@@ -26,12 +19,25 @@ class AdminPanelApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      initialRoute: '/',
+      debugShowCheckedModeBanner: false,
+      home: StreamBuilder<User?>(
+        stream: FirebaseAuth.instance.authStateChanges(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          
+          if (snapshot.hasData) {
+            return const AdminDashboard();
+          }
+          
+          return const LoginScreen();
+        },
+      ),
       routes: {
-        '/': (context) => LoginScreen(),
-        '/dashboard': (context) => AdminDashboard(),
+        '/login': (context) => const LoginScreen(),
+        '/dashboard': (context) => const AdminDashboard(),
       },
     );
-
   }
 }
