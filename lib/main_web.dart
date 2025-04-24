@@ -1,9 +1,10 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
-import 'admin/login.dart';
-import 'admin/admin_dashboard.dart';
+import 'auth/signup_screen.dart';
+import 'auth/login_screen.dart';
 import 'firebase_options.dart';
+import 'home/home_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -28,15 +29,18 @@ class AdminPanelApp extends StatelessWidget {
           }
           
           if (snapshot.hasData) {
-            return const AdminDashboard();
+            // return const AdminDashboard();
           }
           
-          return const LoginScreen();
+          // Show signup screen by default for web
+          return const SignupScreen();
         },
       ),
       routes: {
+        '/signup': (context) => const SignupScreen(),
         '/login': (context) => const LoginScreen(),
-        '/dashboard': (context) => const AdminDashboard(),
+        '/admin_login': (context) => const LoginScreen(), // Original admin login
+        // '/dashboard': (context) => const AdminDashboard(),
       },
     );
   }

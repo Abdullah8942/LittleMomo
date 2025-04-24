@@ -3,6 +3,7 @@ import 'package:fluttertoast/fluttertoast.dart';
 import 'package:littlemomo/auth/login_screen.dart';
 import 'package:littlemomo/home/home_screen.dart';
 import 'package:intl/intl.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({Key? key}) : super(key: key);
@@ -30,6 +31,9 @@ class _SignupScreenState extends State<SignupScreen> {
     'Pakistan', 'United States', 'India', 'China', 'United Kingdom', 
     'Canada', 'Australia', 'Germany', 'France', 'Japan'
   ];
+
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  bool _isLoading = false;
 
   Future<void> _selectDate(BuildContext context) async {
     final DateTime? picked = await showDatePicker(
@@ -59,7 +63,7 @@ class _SignupScreenState extends State<SignupScreen> {
     }
   }
 
-  void _validateAndSignup() {
+  void _validateAndSignup() async {
     if (_formKey.currentState!.validate()) {
       if (_selectedCountry == null) {
         Fluttertoast.showToast(
@@ -79,21 +83,59 @@ class _SignupScreenState extends State<SignupScreen> {
         return;
       }
 
-      // In a real app, this would create a user account
-      // Now navigate directly to the home screen after successful signup
-      Fluttertoast.showToast(
-        msg: "Account created successfully!",
-        toastLength: Toast.LENGTH_SHORT,
-        backgroundColor: Colors.green,
-      );
-      
-      Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(
-          builder: (context) => HomeScreen(username: _usernameController.text),
-        ),
-        (route) => false, // This removes all previous routes from the stack
-      );
+      setState(() {
+        _isLoading = true;
+      });
+
+      try {
+        // Create user with email and password in Firebase
+        final UserCredential userCredential = await _auth.createUserWithEmailAndPassword(
+          email: _emailController.text.trim(),
+          password: _passwordController.text,
+        );
+
+        // In a real app, you would also save additional user data to Firestore/Realtime Database
+        
+        Fluttertoast.showToast(
+          msg: "Account created successfully!",
+          toastLength: Toast.LENGTH_SHORT,
+          backgroundColor: Colors.green,
+        );
+        
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(
+            builder: (context) => HomeScreen(username: _usernameController.text),
+          ),
+          (route) => false,
+        );
+      } on FirebaseAuthException catch (e) {
+        String errorMessage = "Registration failed";
+        
+        if (e.code == 'weak-password') {
+          errorMessage = 'The password provided is too weak';
+        } else if (e.code == 'email-already-in-use') {
+          errorMessage = 'The account already exists for this email';
+        } else if (e.code == 'invalid-email') {
+          errorMessage = 'The email address is not valid';
+        }
+        
+        Fluttertoast.showToast(
+          msg: errorMessage,
+          toastLength: Toast.LENGTH_LONG,
+          backgroundColor: Colors.red,
+        );
+      } catch (e) {
+        Fluttertoast.showToast(
+          msg: "An error occurred: ${e.toString()}",
+          toastLength: Toast.LENGTH_LONG,
+          backgroundColor: Colors.red,
+        );
+      } finally {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -309,7 +351,7 @@ class _SignupScreenState extends State<SignupScreen> {
                   
                   // Signup Button
                   ElevatedButton(
-                    onPressed: _validateAndSignup,
+                    onPressed: _isLoading ? null : _validateAndSignup,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.deepOrange,
                       padding: const EdgeInsets.symmetric(vertical: 16),
@@ -318,14 +360,16 @@ class _SignupScreenState extends State<SignupScreen> {
                       ),
                       minimumSize: const Size(double.infinity, 50),
                     ),
-                    child: const Text(
-                      'Sign Up',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
+                    child: _isLoading 
+                      ? const CircularProgressIndicator(color: Colors.white) 
+                      : const Text(
+                          'Sign Up',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
                   ),
                   const SizedBox(height: 20),
                   
@@ -364,4 +408,4 @@ class _SignupScreenState extends State<SignupScreen> {
       ),
     );
   }
-} 
+}
