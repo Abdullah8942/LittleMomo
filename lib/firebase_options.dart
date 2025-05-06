@@ -22,8 +22,8 @@ class DefaultFirebaseOptions {
     switch (defaultTargetPlatform) {
       case TargetPlatform.android:
         return android;
-      case TargetPlatform.iOS:
-        return ios;
+      // case TargetPlatform.iOS:
+      //   return ios;
       case TargetPlatform.macOS:
         throw UnsupportedError(
           'DefaultFirebaseOptions have not been configured for macos - '
@@ -47,29 +47,29 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyDNkshRcutVaC2QppI9Fhxrbnxnyw6Hcxc',
-    appId: '1:774889290546:web:6eec31c312a23a223f352b',
-    messagingSenderId: '774889290546',
-    projectId: 'little-momo-9fbc2',
-    authDomain: 'little-momo-9fbc2.firebaseapp.com',
-    storageBucket: 'little-momo-9fbc2.firebasestorage.app',
-    measurementId: 'G-HPK766EVR9',
+      apiKey: "AIzaSyAUO22oRkGYneBF3mQD7A7kOYLWE0S4-Us",
+      authDomain: "little-momo-6eab0.firebaseapp.com",
+      projectId: "little-momo-6eab0",
+      storageBucket: "little-momo-6eab0.firebasestorage.app",
+      messagingSenderId: "1037837606124",
+      appId: "1:1037837606124:web:5dfdd1f958c77ade3f59c9",
+      measurementId: "G-LL20KF98XC",
   );
 
   static const FirebaseOptions android = FirebaseOptions(
     apiKey: 'AIzaSyBuc1NYBSyV0mfaf3HWBMsZRVvS_tHGHpI',
-    appId: '1:774889290546:android:f9b66d4e5441078f3f352b',
-    messagingSenderId: '774889290546',
-    projectId: 'little-momo-9fbc2',
-    storageBucket: 'little-momo-9fbc2.firebasestorage.app',
+    appId: '1:1037837606124:android:bc5742727987346e3f59c9',
+    messagingSenderId: '1037837606124',
+    projectId: 'little-momo-6eab0',
+    storageBucket: 'little-momo-6eab0.firebasestorage.app',
   );
 
-  static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyACTwZO57BebCUoGXy4m8tE1OT9sdNvgpo',
-    appId: '1:774889290546:ios:e5b207801ef383e73f352b',
-    messagingSenderId: '774889290546',
-    projectId: 'little-momo-9fbc2',
-    storageBucket: 'little-momo-9fbc2.firebasestorage.app',
-    iosBundleId: 'com.example.littilemomo',
-  );
+  // static const FirebaseOptions ios = FirebaseOptions(
+  //   apiKey: 'AIzaSyACTwZO57BebCUoGXy4m8tE1OT9sdNvgpo',
+  //   appId: '1:774889290546:ios:e5b207801ef383e73f352b',
+  //   messagingSenderId: '774889290546',
+  //   projectId: 'little-momo-9fbc2',
+  //   storageBucket: 'little-momo-9fbc2.firebasestorage.app',
+  //   iosBundleId: 'com.example.littilemomo',
+  // );
 }
