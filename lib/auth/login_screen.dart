@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:littlemomo/auth/signup_screen.dart';
 import 'package:littlemomo/home/home_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({Key? key}) : super(key: key);
@@ -17,7 +19,11 @@ class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _passwordController = TextEditingController();
   bool _isObscure = true;
   bool _isLoading = false;
+  bool _isGoogleLoading = false;
   final FirebaseAuth _auth = FirebaseAuth.instance;
+  
+  // Initialize GoogleSignIn without explicit clientId (will be handled via Firebase's web flow)
+  final GoogleSignIn _googleSignIn = GoogleSignIn();
 
   void _login() async {
     if (_formKey.currentState!.validate()) {
@@ -68,6 +74,66 @@ class _LoginScreenState extends State<LoginScreen> {
           _isLoading = false;
         });
       }
+    }
+  }
+
+  Future<void> _signInWithGoogle() async {
+    setState(() {
+      _isGoogleLoading = true;
+    });
+
+    try {
+      UserCredential? userCredential;
+      
+      if (kIsWeb) {
+        // Web platform - use Firebase Auth directly
+        GoogleAuthProvider googleProvider = GoogleAuthProvider();
+        userCredential = await _auth.signInWithPopup(googleProvider);
+      } else {
+        // Mobile platforms - use GoogleSignIn
+        final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+        
+        if (googleUser == null) {
+          // User canceled the sign-in flow
+          setState(() {
+            _isGoogleLoading = false;
+          });
+          return;
+        }
+
+        // Obtain the auth details from the request
+        final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+
+        // Create a new credential
+        final credential = GoogleAuthProvider.credential(
+          accessToken: googleAuth.accessToken,
+          idToken: googleAuth.idToken,
+        );
+
+        // Sign in to Firebase with the Google credential
+        userCredential = await _auth.signInWithCredential(credential);
+      }
+
+      if (userCredential != null && userCredential.user != null) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => HomeScreen(
+              username: userCredential?.user?.displayName ?? userCredential?.user?.email ?? "User",
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      Fluttertoast.showToast(
+        msg: "Google sign in failed: ${e.toString()}",
+        toastLength: Toast.LENGTH_LONG,
+        backgroundColor: Colors.red,
+      );
+    } finally {
+      setState(() {
+        _isGoogleLoading = false;
+      });
     }
   }
 
@@ -192,6 +258,51 @@ class _LoginScreenState extends State<LoginScreen> {
                             color: Colors.white,
                           ),
                         ),
+                  ),
+                  const SizedBox(height: 16),
+                  const Row(
+                    children: [
+                      Expanded(child: Divider()),
+                      Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 16),
+                        child: Text("OR", style: TextStyle(color: Colors.grey)),
+                      ),
+                      Expanded(child: Divider()),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton.icon(
+                    onPressed: _isGoogleLoading ? null : _signInWithGoogle,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        side: const BorderSide(color: Colors.grey),
+                      ),
+                      minimumSize: const Size(double.infinity, 50),
+                    ),
+                    icon: _isGoogleLoading
+                        ? const SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(Colors.grey),
+                            ),
+                          )
+                        : Image.network(
+                            'https://upload.wikimedia.org/wikipedia/commons/5/53/Google_%22G%22_Logo.svg',
+                            height: 24,
+                            width: 24,
+                          ),
+                    label: const Text(
+                      'Sign in with Google',
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: Colors.black87,
+                      ),
+                    ),
                   ),
                   const SizedBox(height: 20),
                   Row(
