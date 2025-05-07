@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
-import 'package:fluttertoast/fluttertoast.dart';
+import 'package:another_flushbar/flushbar.dart';
 import 'package:littlemomo/auth/signup_screen.dart';
-import 'package:littlemomo/home/home_screen.dart';
+import 'package:littlemomo/home/product_list_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
@@ -41,7 +41,7 @@ class _LoginScreenState extends State<LoginScreen> {
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(
-              builder: (context) => HomeScreen(username: _usernameController.text),
+              builder: (context) => const ProductListScreen(),
             ),
           );
         }
@@ -58,17 +58,17 @@ class _LoginScreenState extends State<LoginScreen> {
           errorMessage = 'This user has been disabled';
         }
         
-        Fluttertoast.showToast(
-          msg: errorMessage,
-          toastLength: Toast.LENGTH_LONG,
-          backgroundColor: Colors.red,
-        );
+        Flushbar(
+          message: errorMessage,
+          duration: Duration(seconds: 3),
+          flushbarPosition: FlushbarPosition.BOTTOM,
+        ).show(context);
       } catch (e) {
-        Fluttertoast.showToast(
-          msg: "An error occurred: ${e.toString()}",
-          toastLength: Toast.LENGTH_LONG,
-          backgroundColor: Colors.red,
-        );
+        Flushbar(
+          message: "An error occurred: ${e.toString()}",
+          duration: Duration(seconds: 3),
+          flushbarPosition: FlushbarPosition.BOTTOM,
+        ).show(context);
       } finally {
         setState(() {
           _isLoading = false;
@@ -118,18 +118,16 @@ class _LoginScreenState extends State<LoginScreen> {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
-            builder: (context) => HomeScreen(
-              username: userCredential?.user?.displayName ?? userCredential?.user?.email ?? "User",
-            ),
+            builder: (context) => const ProductListScreen(),
           ),
         );
       }
     } catch (e) {
-      Fluttertoast.showToast(
-        msg: "Google sign in failed: ${e.toString()}",
-        toastLength: Toast.LENGTH_LONG,
-        backgroundColor: Colors.red,
-      );
+      Flushbar(
+        message: "Google sign in failed: ${e.toString()}",
+        duration: Duration(seconds: 3),
+        flushbarPosition: FlushbarPosition.BOTTOM,
+      ).show(context);
     } finally {
       setState(() {
         _isGoogleLoading = false;

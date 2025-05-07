@@ -4,6 +4,7 @@ class Product {
   final String category;
   final double price;
   final String imagePath;
+  final String? description;
 
   Product({
     required this.id,
@@ -11,6 +12,7 @@ class Product {
     required this.category,
     required this.price,
     required this.imagePath,
+    this.description,
   });
 
   // Convert Product object to a Map
@@ -21,6 +23,7 @@ class Product {
       'category': category,
       'price': price,
       'imagePath': imagePath,
+      'description': description,
     };
   }
 
@@ -32,6 +35,7 @@ class Product {
       category: map['category'],
       price: map['price'],
       imagePath: map['imagePath'],
+      description: map['description'],
     );
   }
 
@@ -42,6 +46,7 @@ class Product {
     String? category,
     double? price,
     String? imagePath,
+    String? description,
   }) {
     return Product(
       id: id ?? this.id,
@@ -49,6 +54,7 @@ class Product {
       category: category ?? this.category,
       price: price ?? this.price,
       imagePath: imagePath ?? this.imagePath,
+      description: description ?? this.description,
     );
   }
 } 

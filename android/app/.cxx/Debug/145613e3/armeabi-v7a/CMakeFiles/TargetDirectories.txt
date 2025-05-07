@@ -1,0 +1,2 @@
+E:/smester 6/MAD/LittleMomo-5/android/app/.cxx/Debug/145613e3/armeabi-v7a/CMakeFiles/edit_cache.dir
+E:/smester 6/MAD/LittleMomo-5/android/app/.cxx/Debug/145613e3/armeabi-v7a/CMakeFiles/rebuild_cache.dir

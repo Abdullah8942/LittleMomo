@@ -5,9 +5,18 @@ import 'package:littlemomo/splash_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+  } catch (e) {
+    // If Firebase is already initialized, continue
+    if (e.toString().contains('duplicate-app')) {
+      // Firebase is already initialized, continue
+    } else {
+      rethrow;
+    }
+  }
   runApp(const MyApp());
 }
 

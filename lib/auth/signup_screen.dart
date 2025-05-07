@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:fluttertoast/fluttertoast.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:another_flushbar/flushbar.dart';
 import 'package:littlemomo/auth/login_screen.dart';
 import 'package:littlemomo/home/home_screen.dart';
 import 'package:intl/intl.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({Key? key}) : super(key: key);
@@ -66,20 +66,20 @@ class _SignupScreenState extends State<SignupScreen> {
   void _validateAndSignup() async {
     if (_formKey.currentState!.validate()) {
       if (_selectedCountry == null) {
-        Fluttertoast.showToast(
-          msg: "Please select a country",
-          toastLength: Toast.LENGTH_SHORT,
-          backgroundColor: Colors.red,
-        );
+        Flushbar(
+          message: "Please select a country",
+          duration: Duration(seconds: 2),
+          flushbarPosition: FlushbarPosition.BOTTOM,
+        ).show(context);
         return;
       }
       
       if (_selectedDate == null) {
-        Fluttertoast.showToast(
-          msg: "Please select your date of birth",
-          toastLength: Toast.LENGTH_SHORT,
-          backgroundColor: Colors.red,
-        );
+        Flushbar(
+          message: "Please select your date of birth",
+          duration: Duration(seconds: 2),
+          flushbarPosition: FlushbarPosition.BOTTOM,
+        ).show(context);
         return;
       }
 
@@ -96,11 +96,11 @@ class _SignupScreenState extends State<SignupScreen> {
 
         // In a real app, you would also save additional user data to Firestore/Realtime Database
         
-        Fluttertoast.showToast(
-          msg: "Account created successfully!",
-          toastLength: Toast.LENGTH_SHORT,
-          backgroundColor: Colors.green,
-        );
+        Flushbar(
+          message: "Account created successfully!",
+          duration: Duration(seconds: 2),
+          flushbarPosition: FlushbarPosition.BOTTOM,
+        ).show(context);
         
         Navigator.pushAndRemoveUntil(
           context,
@@ -120,17 +120,17 @@ class _SignupScreenState extends State<SignupScreen> {
           errorMessage = 'The email address is not valid';
         }
         
-        Fluttertoast.showToast(
-          msg: errorMessage,
-          toastLength: Toast.LENGTH_LONG,
-          backgroundColor: Colors.red,
-        );
+        Flushbar(
+          message: errorMessage,
+          duration: Duration(seconds: 2),
+          flushbarPosition: FlushbarPosition.BOTTOM,
+        ).show(context);
       } catch (e) {
-        Fluttertoast.showToast(
-          msg: "An error occurred: ${e.toString()}",
-          toastLength: Toast.LENGTH_LONG,
-          backgroundColor: Colors.red,
-        );
+        Flushbar(
+          message: "An error occurred: ${e.toString()}",
+          duration: Duration(seconds: 2),
+          flushbarPosition: FlushbarPosition.BOTTOM,
+        ).show(context);
       } finally {
         setState(() {
           _isLoading = false;
