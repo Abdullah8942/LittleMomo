@@ -1,9 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:another_flushbar/flushbar.dart';
-import 'package:littlemomo/database/database_helper.dart';
-import 'package:littlemomo/models/product_model.dart';
-import 'dart:io';
 
 class ProductDetailScreen extends StatefulWidget {
   final String productId;
@@ -37,15 +34,11 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       });
 
       try {
-        final product = Product(
-          id: int.parse(widget.productId),
-          name: _nameController.text,
-          category: 'Momo', // You might want to add a category field
-          price: double.parse(_priceController.text),
-          imagePath: 'assets/veg.webp', // You might want to handle image updates
-        );
-
-        await DatabaseHelper.instance.updateProduct(product);
+        await FirebaseFirestore.instance.collection('products').doc(widget.productId).update({
+          'name': _nameController.text,
+          'price': double.parse(_priceController.text),
+          'description': _descriptionController.text,
+        });
         
         if (mounted) {
           Flushbar(
@@ -100,17 +93,14 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       });
 
       try {
-        await DatabaseHelper.instance.deleteProduct(int.parse(widget.productId));
+        await FirebaseFirestore.instance.collection('products').doc(widget.productId).delete();
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Product deleted successfully'), backgroundColor: Colors.green),
-          );
-          // Pop after the current frame to avoid _debugLocked error
-          Future.microtask(() {
-            if (mounted && Navigator.canPop(context)) {
-              Navigator.pop(context);
-            }
-          });
+          Navigator.pop(context);
+          Flushbar(
+            message: 'Product deleted successfully',
+            duration: const Duration(seconds: 2),
+            backgroundColor: Colors.green,
+          ).show(context);
         }
       } catch (e) {
         if (mounted) {
@@ -156,8 +146,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
-          : FutureBuilder<Product?>(
-              future: DatabaseHelper.instance.getProduct(int.parse(widget.productId)),
+          : StreamBuilder<DocumentSnapshot>(
+              stream: FirebaseFirestore.instance.collection('products').doc(widget.productId).snapshots(),
               builder: (context, snapshot) {
                 if (snapshot.hasError) {
                   return Center(child: Text('Error: ${snapshot.error}'));
@@ -171,11 +161,11 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                   return const Center(child: Text('Product not found'));
                 }
 
-                final product = snapshot.data!;
+                final data = snapshot.data!.data() as Map<String, dynamic>;
                 if (_isEditing) {
-                  _nameController.text = product.name;
-                  _priceController.text = product.price.toString();
-                  _descriptionController.text = product.description ?? '';
+                  _nameController.text = data['name'] ?? '';
+                  _priceController.text = data['price']?.toString() ?? '';
+                  _descriptionController.text = data['description'] ?? '';
                 }
 
                 return SingleChildScrollView(
@@ -184,20 +174,16 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        ClipRRect(
-                          child: product.imagePath.startsWith('assets/')
-                              ? Image.asset(
-                                  product.imagePath,
-                                  height: 300,
-                                  width: double.infinity,
-                                  fit: BoxFit.cover,
-                                )
-                              : Image.file(
-                                  File(product.imagePath),
-                                  height: 300,
-                                  width: double.infinity,
-                                  fit: BoxFit.cover,
-                                ),
+                        Image.network(
+                          data['imageUrl'] ?? '',
+                          height: 300,
+                          width: double.infinity,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            return const Center(
+                              child: Icon(Icons.error, size: 100),
+                            );
+                          },
                         ),
                         Padding(
                           padding: const EdgeInsets.all(16.0),
@@ -224,7 +210,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                   decoration: const InputDecoration(
                                     labelText: 'Price',
                                     border: OutlineInputBorder(),
-                                    prefixText: '\$',
+                                    prefixText: '₹',
                                   ),
                                   keyboardType: TextInputType.number,
                                   validator: (value) {
@@ -248,7 +234,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                 ),
                               ] else ...[
                                 Text(
-                                  product.name,
+                                  data['name'] ?? '',
                                   style: const TextStyle(
                                     fontSize: 24,
                                     fontWeight: FontWeight.bold,
@@ -256,14 +242,14 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                 ),
                                 const SizedBox(height: 8),
                                 Text(
-                                  '\$${product.price.toStringAsFixed(2)}',
+                                  '₹${data['price']?.toString() ?? '0'}',
                                   style: TextStyle(
                                     fontSize: 20,
                                     color: Theme.of(context).primaryColor,
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
-                                if (product.description != null) ...[
+                                if (data['description'] != null) ...[
                                   const SizedBox(height: 16),
                                   const Text(
                                     'Description',
@@ -274,7 +260,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                   ),
                                   const SizedBox(height: 8),
                                   Text(
-                                    product.description!,
+                                    data['description'],
                                     style: const TextStyle(fontSize: 16),
                                   ),
                                 ],
@@ -286,10 +272,18 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                   child: ElevatedButton(
                                     onPressed: () async {
                                       try {
-                                        await DatabaseHelper.instance.addToCart(product.id!, 1);
+                                        await FirebaseFirestore.instance.collection('cart').add({
+                                          'productId': widget.productId,
+                                          'name': data['name'],
+                                          'price': data['price'],
+                                          'imageUrl': data['imageUrl'],
+                                          'quantity': 1,
+                                          'createdAt': FieldValue.serverTimestamp(),
+                                        });
+                                        
                                         if (mounted) {
                                           Flushbar(
-                                            message: 'Product added successfully!',
+                                            message: 'Product added to cart successfully!',
                                             duration: const Duration(seconds: 3),
                                             backgroundColor: Colors.green,
                                           ).show(context);

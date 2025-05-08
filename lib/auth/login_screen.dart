@@ -289,8 +289,8 @@ class _LoginScreenState extends State<LoginScreen> {
                               valueColor: AlwaysStoppedAnimation<Color>(Colors.grey),
                             ),
                           )
-                        : Image.network(
-                            'https://upload.wikimedia.org/wikipedia/commons/5/53/Google_%22G%22_Logo.svg',
+                        : Image.asset(
+                            'assets/google.png',
                             height: 24,
                             width: 24,
                           ),

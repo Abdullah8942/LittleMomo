@@ -1,12 +1,13 @@
-import 'dart:io';
+import 'dart:io' as io;
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:another_flushbar/flushbar.dart';
-import 'package:littlemomo/database/database_helper.dart';
 import 'package:littlemomo/models/product_model.dart';
 import 'package:littlemomo/home/product_list_screen.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_storage/firebase_storage.dart';
+import 'package:http/http.dart' as http;
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 class AddProductScreen extends StatefulWidget {
   const AddProductScreen({Key? key}) : super(key: key);
@@ -21,7 +22,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
   final _priceController = TextEditingController();
   final _descriptionController = TextEditingController();
   String? _selectedCategory;
-  File? _imageFile;
+  XFile? _imageFile;
   bool _isInStock = true;
   bool _isLoading = false;
 
@@ -35,7 +36,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
     
     if (image != null) {
       setState(() {
-        _imageFile = File(image.path);
+        _imageFile = image;
       });
     }
   }
@@ -44,18 +45,35 @@ class _AddProductScreenState extends State<AddProductScreen> {
     if (_imageFile == null) return null;
 
     try {
-      final ref = FirebaseStorage.instance
-          .ref()
-          .child('products')
-          .child('${DateTime.now().millisecondsSinceEpoch}.jpg');
+      // Read the image file
+      final bytes = await _imageFile!.readAsBytes();
+      final base64Image = base64Encode(bytes);
+
+      // ImgBB API key
+      const apiKey = '0b4c2c9be0955553dc20d36243a5df1a';
       
-      await ref.putFile(_imageFile!);
-      return await ref.getDownloadURL();
+      // Create the request body
+      final requestBody = {
+        'image': base64Image,
+      };
+
+      // Make the API request to ImgBB
+      final response = await http.post(
+        Uri.parse('https://api.imgbb.com/1/upload?key=$apiKey'),
+        body: requestBody,
+      );
+
+      if (response.statusCode == 200) {
+        final jsonResponse = jsonDecode(response.body);
+        return jsonResponse['data']['url'];
+      } else {
+        throw Exception('Failed to upload image: ${response.body}');
+      }
     } catch (e) {
       if (mounted) {
         Flushbar(
-          message: 'Error uploading image: $e',
-          duration: const Duration(seconds: 2),
+          message: 'Error uploading image: ${e.toString()}',
+          duration: const Duration(seconds: 3),
           backgroundColor: Colors.red,
         ).show(context);
       }
@@ -71,10 +89,15 @@ class _AddProductScreenState extends State<AddProductScreen> {
     try {
       final imageUrl = await _uploadImage();
       
+      if (imageUrl == null) {
+        throw Exception('Failed to upload image. Please try again.');
+      }
+
       await FirebaseFirestore.instance.collection('products').add({
         'name': _nameController.text,
         'price': double.parse(_priceController.text),
         'description': _descriptionController.text,
+        'category': _selectedCategory,
         'imageUrl': imageUrl,
         'inStock': _isInStock,
         'createdAt': FieldValue.serverTimestamp(),
@@ -91,8 +114,8 @@ class _AddProductScreenState extends State<AddProductScreen> {
     } catch (e) {
       if (mounted) {
         Flushbar(
-          message: 'Error adding product: $e',
-          duration: const Duration(seconds: 2),
+          message: 'Error adding product: ${e.toString()}',
+          duration: const Duration(seconds: 3),
           backgroundColor: Colors.red,
         ).show(context);
       }
@@ -124,10 +147,15 @@ class _AddProductScreenState extends State<AddProductScreen> {
                     color: Colors.grey[200],
                     borderRadius: BorderRadius.circular(12),
                     image: _imageFile != null
-                        ? DecorationImage(
-                            image: FileImage(_imageFile!),
-                            fit: BoxFit.cover,
-                          )
+                        ? (kIsWeb
+                            ? DecorationImage(
+                                image: NetworkImage(_imageFile!.path),
+                                fit: BoxFit.cover,
+                              )
+                            : DecorationImage(
+                                image: FileImage(io.File(_imageFile!.path)),
+                                fit: BoxFit.cover,
+                              ))
                         : null,
                   ),
                   child: _imageFile == null
@@ -164,6 +192,31 @@ class _AddProductScreenState extends State<AddProductScreen> {
                   }
                   if (double.tryParse(value) == null) {
                     return 'Please enter a valid price';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
+              DropdownButtonFormField<String>(
+                value: _selectedCategory,
+                decoration: const InputDecoration(
+                  labelText: 'Category',
+                  border: OutlineInputBorder(),
+                ),
+                items: _categories.map((String category) {
+                  return DropdownMenuItem<String>(
+                    value: category,
+                    child: Text(category),
+                  );
+                }).toList(),
+                onChanged: (String? newValue) {
+                  setState(() {
+                    _selectedCategory = newValue;
+                  });
+                },
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please select a category';
                   }
                   return null;
                 },

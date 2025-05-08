@@ -1,7 +1,5 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:littlemomo/database/database_helper.dart';
-import 'package:littlemomo/models/product_model.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:littlemomo/home/cart_screen.dart';
 import 'package:littlemomo/home/product_detail_screen.dart';
 import 'package:littlemomo/home/add_product_screen.dart';
@@ -15,36 +13,7 @@ class ProductListScreen extends StatefulWidget {
 }
 
 class _ProductListScreenState extends State<ProductListScreen> {
-  List<Product> _products = [];
-  List<Product> _popularProducts = [];
   bool _isLoading = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadProducts();
-  }
-
-  Future<void> _loadProducts() async {
-    try {
-      final products = await DatabaseHelper.instance.getProducts();
-      setState(() {
-        _products = products;
-        // Filter popular products (you can implement your own logic here)
-        _popularProducts = products.where((product) => product.price > 7.0).toList();
-        _isLoading = false;
-      });
-    } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to load products: $e')),
-        );
-      }
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -63,15 +32,6 @@ class _ProductListScreenState extends State<ProductListScreen> {
                 context,
                 MaterialPageRoute(builder: (context) => const CartScreen()),
               );
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: () {
-              setState(() {
-                _isLoading = true;
-              });
-              _loadProducts();
             },
           ),
         ],
@@ -124,61 +84,64 @@ class _ProductListScreenState extends State<ProductListScreen> {
           ],
         ),
       ),
-      floatingActionButton: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          FloatingActionButton(
-            heroTag: 'add',
-            backgroundColor: Colors.deepOrange,
-            child: const Icon(Icons.add),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => AddProductScreen()),
-              ).then((_) => _loadProducts());
-            },
-          ),
-          const SizedBox(height: 12),
-          FloatingActionButton(
-            heroTag: 'refresh',
-            backgroundColor: Colors.orangeAccent,
-            child: const Icon(Icons.refresh),
-            onPressed: () {
-              setState(() {
-                _isLoading = true;
-              });
-              _loadProducts();
-            },
-          ),
-        ],
+      floatingActionButton: FloatingActionButton(
+        heroTag: 'add',
+        backgroundColor: Colors.deepOrange,
+        child: const Icon(Icons.add),
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const AddProductScreen()),
+          );
+        },
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _products.isEmpty
-              ? _buildEmptyState()
-              : RefreshIndicator(
-                  onRefresh: _loadProducts,
-                  child: SingleChildScrollView(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        if (_popularProducts.isNotEmpty) _buildPopularProducts(),
-                        const Padding(
-                          padding: EdgeInsets.all(16.0),
-                          child: Text(
-                            'All Items',
-                            style: TextStyle(
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                        _buildProductList(),
-                      ],
+      body: StreamBuilder<QuerySnapshot>(
+        stream: FirebaseFirestore.instance.collection('products').snapshots(),
+        builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            return Center(child: Text('Error: ${snapshot.error}'));
+          }
+
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          if (snapshot.data!.docs.isEmpty) {
+            return _buildEmptyState();
+          }
+
+          final products = snapshot.data!.docs;
+          final popularProducts = products.where((doc) {
+            final data = doc.data() as Map<String, dynamic>;
+            return (data['price'] as num) > 7.0;
+          }).toList();
+
+          return RefreshIndicator(
+            onRefresh: () async {
+              // The StreamBuilder will automatically refresh
+            },
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (popularProducts.isNotEmpty) _buildPopularProducts(popularProducts),
+                  const Padding(
+                    padding: EdgeInsets.all(16.0),
+                    child: Text(
+                      'All Items',
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
-                ),
+                  _buildProductList(products),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
     );
   }
 
@@ -209,15 +172,20 @@ class _ProductListScreenState extends State<ProductListScreen> {
                 borderRadius: BorderRadius.circular(12),
               ),
             ),
-            onPressed: _loadSampleData,
-            child: const Text('Add Sample Products'),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const AddProductScreen()),
+              );
+            },
+            child: const Text('Add New Product'),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildPopularProducts() {
+  Widget _buildPopularProducts(List<QueryDocumentSnapshot> products) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -236,9 +204,10 @@ class _ProductListScreenState extends State<ProductListScreen> {
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 8),
-            itemCount: _popularProducts.length,
+            itemCount: products.length,
             itemBuilder: (context, index) {
-              final product = _popularProducts[index];
+              final doc = products[index];
+              final data = doc.data() as Map<String, dynamic>;
               return Container(
                 width: 220,
                 margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -248,7 +217,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: InkWell(
-                    onTap: () => _showProductDetails(product),
+                    onTap: () => _showProductDetails(doc.id),
                     borderRadius: BorderRadius.circular(20),
                     child: Container(
                       decoration: BoxDecoration(
@@ -269,19 +238,17 @@ class _ProductListScreenState extends State<ProductListScreen> {
                             borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
                             child: Stack(
                               children: [
-                                product.imagePath.startsWith('assets/')
-                                    ? Image.asset(
-                                        product.imagePath,
-                                        height: 130,
-                                        width: double.infinity,
-                                        fit: BoxFit.cover,
-                                      )
-                                    : Image.file(
-                                        File(product.imagePath),
-                                        height: 130,
-                                        width: double.infinity,
-                                        fit: BoxFit.cover,
-                                      ),
+                                Image.network(
+                                  data['imageUrl'] ?? '',
+                                  height: 130,
+                                  width: double.infinity,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) {
+                                    return const Center(
+                                      child: Icon(Icons.error, size: 50),
+                                    );
+                                  },
+                                ),
                                 Positioned(
                                   top: 8,
                                   right: 8,
@@ -292,7 +259,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
                                       borderRadius: BorderRadius.circular(12),
                                     ),
                                     child: Text(
-                                      '\$${product.price.toStringAsFixed(2)}',
+                                      '₹${data['price']?.toString() ?? '0'}',
                                       style: const TextStyle(
                                         color: Colors.white,
                                         fontWeight: FontWeight.bold,
@@ -311,7 +278,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
                                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
                                   Text(
-                                    product.name,
+                                    data['name'] ?? '',
                                     style: const TextStyle(
                                       color: Colors.white,
                                       fontWeight: FontWeight.bold,
@@ -322,7 +289,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
-                                    product.category,
+                                    data['category'] ?? '',
                                     style: TextStyle(
                                       color: Colors.white.withOpacity(0.8),
                                       fontSize: 14,
@@ -337,7 +304,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
                             child: SizedBox(
                               width: double.infinity,
                               child: ElevatedButton(
-                                onPressed: () => _addToCart(product),
+                                onPressed: () => _addToCart(doc.id, data),
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: Colors.white,
                                   foregroundColor: Colors.deepOrange,
@@ -363,14 +330,15 @@ class _ProductListScreenState extends State<ProductListScreen> {
     );
   }
 
-  Widget _buildProductList() {
+  Widget _buildProductList(List<QueryDocumentSnapshot> products) {
     return ListView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       padding: const EdgeInsets.all(8),
-      itemCount: _products.length,
+      itemCount: products.length,
       itemBuilder: (context, index) {
-        final product = _products[index];
+        final doc = products[index];
+        final data = doc.data() as Map<String, dynamic>;
         return Card(
           elevation: 3,
           margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
@@ -378,26 +346,22 @@ class _ProductListScreenState extends State<ProductListScreen> {
             borderRadius: BorderRadius.circular(12),
           ),
           child: InkWell(
-            onTap: () => _showProductDetails(product),
+            onTap: () => _showProductDetails(doc.id),
             child: Padding(
               padding: const EdgeInsets.all(12),
               child: Row(
                 children: [
                   ClipRRect(
                     borderRadius: BorderRadius.circular(8),
-                    child: product.imagePath.startsWith('assets/')
-                        ? Image.asset(
-                            product.imagePath,
-                            width: 80,
-                            height: 80,
-                            fit: BoxFit.cover,
-                          )
-                        : Image.file(
-                            File(product.imagePath),
-                            width: 80,
-                            height: 80,
-                            fit: BoxFit.cover,
-                          ),
+                    child: Image.network(
+                      data['imageUrl'] ?? '',
+                      width: 80,
+                      height: 80,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        return const Icon(Icons.error, size: 50);
+                      },
+                    ),
                   ),
                   const SizedBox(width: 16),
                   Expanded(
@@ -405,7 +369,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          product.name,
+                          data['name'] ?? '',
                           style: const TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 16,
@@ -413,7 +377,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          'Category: ${product.category}',
+                          'Category: ${data['category'] ?? ''}',
                           style: const TextStyle(
                             fontSize: 14,
                             color: Colors.grey,
@@ -421,7 +385,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          '\$${product.price.toStringAsFixed(2)}',
+                          '₹${data['price']?.toString() ?? '0'}',
                           style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
@@ -432,7 +396,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
                     ),
                   ),
                   ElevatedButton(
-                    onPressed: () => _addToCart(product),
+                    onPressed: () => _addToCart(doc.id, data),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.deepOrange,
                       padding: const EdgeInsets.symmetric(
@@ -454,110 +418,41 @@ class _ProductListScreenState extends State<ProductListScreen> {
     );
   }
 
-  void _showProductDetails(Product product) {
+  void _showProductDetails(String productId) {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => ProductDetailScreen(productId: product.id.toString()),
+        builder: (context) => ProductDetailScreen(productId: productId),
       ),
-    ).then((_) {
-      if (mounted && Navigator.canPop(context)) {
+    );
+  }
+
+  Future<void> _addToCart(String productId, Map<String, dynamic> productData) async {
+    try {
+      // Add to cart in Firestore
+      await FirebaseFirestore.instance.collection('cart').add({
+        'productId': productId,
+        'name': productData['name'],
+        'price': productData['price'],
+        'imageUrl': productData['imageUrl'],
+        'quantity': 1,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+
+      if (mounted) {
         Flushbar(
-          message: 'Product deleted successfully',
+          message: '${productData['name']} added to cart',
           duration: const Duration(seconds: 2),
           backgroundColor: Colors.green,
         ).show(context);
-        Future.microtask(() => Navigator.pop(context));
-      }
-    });
-  }
-
-  Future<void> _addToCart(Product product) async {
-    try {
-      await DatabaseHelper.instance.addToCart(product.id!, 1);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('${product.name} added to cart'),
-            backgroundColor: Colors.green,
-            action: SnackBarAction(
-              label: 'VIEW CART',
-              textColor: Colors.white,
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const CartScreen(),
-                  ),
-                );
-              },
-            ),
-          ),
-        );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to add to cart: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
-  }
-
-  void _loadSampleData() async {
-    setState(() {
-      _isLoading = true;
-    });
-
-    try {
-      // Sample products using assets from the project
-      final products = [
-        Product(
-          id: 1,
-          name: 'Veg Momo',
-          category: 'Veg Momo',
-          price: 5.99,
-          imagePath: 'assets/veg.webp',
-        ),
-        Product(
-          id: 2,
-          name: 'Buff Momo',
-          category: 'Buff Momo',
-          price: 7.99,
-          imagePath: 'assets/buff.png',
-        ),
-        Product(
-          id: 3,
-          name: 'Fried Momo',
-          category: 'Fried Momo',
-          price: 8.99,
-          imagePath: 'assets/fried.jpg',
-        ),
-        Product(
-          id: 4,
-          name: 'Spicy Momo',
-          category: 'Spicy Momo',
-          price: 9.99,
-          imagePath: 'assets/spicy.webp',
-        ),
-      ];
-
-      for (var product in products) {
-        await DatabaseHelper.instance.insertProduct(product);
-      }
-
-      await _loadProducts();
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to load sample data: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        Flushbar(
+          message: 'Failed to add to cart: $e',
+          duration: const Duration(seconds: 2),
+          backgroundColor: Colors.red,
+        ).show(context);
       }
     }
   }
