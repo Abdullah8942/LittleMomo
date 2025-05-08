@@ -5,6 +5,7 @@ import 'package:littlemomo/auth/signup_screen.dart';
 import 'package:littlemomo/home/product_list_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:littlemomo/auth/admin_login_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({Key? key}) : super(key: key);
@@ -139,6 +140,25 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        actions: [
+          TextButton.icon(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const AdminLoginScreen()),
+              );
+            },
+            icon: const Icon(Icons.admin_panel_settings, color: Colors.deepOrange),
+            label: const Text(
+              'Admin',
+              style: TextStyle(color: Colors.deepOrange),
+            ),
+          ),
+        ],
+      ),
       body: SafeArea(
         child: SingleChildScrollView(
           child: Padding(

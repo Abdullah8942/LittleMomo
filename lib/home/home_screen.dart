@@ -10,6 +10,7 @@ import 'package:littlemomo/home/product_detail_screen.dart';
 class HomeScreen extends StatelessWidget {
   const HomeScreen({Key? key}) : super(key: key);
 
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -22,28 +23,6 @@ class HomeScreen extends StatelessWidget {
               context,
               MaterialPageRoute(builder: (context) => const ManageProductsScreen()),
             ),
-          ),
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: () async {
-              try {
-                await FirebaseAuth.instance.signOut();
-                if (context.mounted) {
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(builder: (context) => const LoginScreen()),
-                  );
-                }
-              } catch (e) {
-                if (context.mounted) {
-                  Flushbar(
-                    message: 'Error signing out: $e',
-                    duration: const Duration(seconds: 2),
-                    backgroundColor: Colors.red,
-                  ).show(context);
-                }
-              }
-            },
           ),
         ],
       ),

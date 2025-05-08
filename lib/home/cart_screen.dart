@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:another_flushbar/flushbar.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class CartScreen extends StatefulWidget {
   const CartScreen({Key? key}) : super(key: key);
@@ -404,6 +405,11 @@ class _CartScreenState extends State<CartScreen> {
             onPressed: () async {
               Navigator.pop(context);
               try {
+                final user = FirebaseAuth.instance.currentUser;
+                if (user == null) {
+                  throw Exception('User not logged in');
+                }
+
                 // Create order in Firestore
                 await FirebaseFirestore.instance.collection('orders').add({
                   'items': await FirebaseFirestore.instance.collection('cart').get().then(
@@ -411,6 +417,8 @@ class _CartScreenState extends State<CartScreen> {
                   ),
                   'totalAmount': totalAmount,
                   'status': 'pending',
+                  'userId': user.uid,
+                  'userEmail': user.email,
                   'createdAt': FieldValue.serverTimestamp(),
                 });
 

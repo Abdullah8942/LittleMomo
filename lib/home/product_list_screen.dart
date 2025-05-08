@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:littlemomo/home/cart_screen.dart';
 import 'package:littlemomo/home/product_detail_screen.dart';
 import 'package:littlemomo/home/add_product_screen.dart';
 import 'package:another_flushbar/flushbar.dart';
+import 'package:littlemomo/auth/login_screen.dart';
 
 class ProductListScreen extends StatefulWidget {
   const ProductListScreen({Key? key}) : super(key: key);
@@ -14,6 +16,27 @@ class ProductListScreen extends StatefulWidget {
 
 class _ProductListScreenState extends State<ProductListScreen> {
   bool _isLoading = true;
+
+  Future<void> _logout(BuildContext context) async {
+    try {
+      await FirebaseAuth.instance.signOut();
+      if (context.mounted) {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (context) => const LoginScreen()),
+          (route) => false,
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        Flushbar(
+          message: 'Error signing out: $e',
+          duration: const Duration(seconds: 2),
+          backgroundColor: Colors.red,
+        ).show(context);
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -72,6 +95,11 @@ class _ProductListScreenState extends State<ProductListScreen> {
               },
             ),
             ListTile(
+              leading: const Icon(Icons.logout),
+              title: const Text('Logout'),
+              onTap: () => _logout(context),
+            ),
+            ListTile(
               leading: const Icon(Icons.info),
               title: const Text('About'),
               onTap: () => showAboutDialog(
@@ -83,17 +111,6 @@ class _ProductListScreenState extends State<ProductListScreen> {
             ),
           ],
         ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        heroTag: 'add',
-        backgroundColor: Colors.deepOrange,
-        child: const Icon(Icons.add),
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const AddProductScreen()),
-          );
-        },
       ),
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance.collection('products').snapshots(),
@@ -164,22 +181,6 @@ class _ProductListScreenState extends State<ProductListScreen> {
             ),
           ),
           const SizedBox(height: 24),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.deepOrange,
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const AddProductScreen()),
-              );
-            },
-            child: const Text('Add New Product'),
-          ),
         ],
       ),
     );
